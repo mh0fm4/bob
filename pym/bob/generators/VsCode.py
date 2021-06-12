@@ -13,12 +13,16 @@ import json
 
 class VsCodeWorkspace:
     def __init__(self):
+        self.bobCmd = "bob"
         self.recipesDir = None
         self.folders = []
         self.packages = []
         self.buildTargets = []
         self.preIncludePaths = []
         self.postIncludePaths = []
+
+    def setBobCmd(self, bobCmd):
+        self.bobCmd = bobCmd
 
     def setRecipesDir(self, recipesDir):
         self.recipesDir = recipesDir
@@ -64,7 +68,7 @@ class VsCodeWorkspace:
             "command": "sh",
             "args": [
                 "-c",
-                "bob dev {0}{1}".format(recipe, (" " if len(params) > 0 else "") + params)
+                "{0} dev {1}{2}".format(self.bobCmd, recipe, (" " if len(params) > 0 else "") + params)
             ],
             "options": {
                 "cwd": self.recipesDir.as_posix()
@@ -180,6 +184,9 @@ class VsCodeGenerator(CommonIDEGenerator):
     def generate(self, extra, bobRoot):
         super().generate()
 
+        # print("extra: {0}".format(extra))
+        # print("bobRoot: {0}".format(bobRoot))
+
         # gather root paths
         bobPwd = Path(os.getcwd())
         if sys.platform == 'msys':
@@ -191,8 +198,12 @@ class VsCodeGenerator(CommonIDEGenerator):
         # print("winPwd: {0}".format(winPwd))
         # print("winDestination: {0}".format(winDestination))
 
+        bobCmd = bobRoot
+
         # create workspace
         ws = VsCodeWorkspace()
+
+        ws.setBobCmd(bobCmd)
 
         ws.setRecipesDir(winPwd)
         if self.args.recipes:
@@ -203,6 +214,7 @@ class VsCodeGenerator(CommonIDEGenerator):
         # print(self.appendIncludeDirectories)
         ws.addPostIncludePaths(self.appendIncludeDirectories)
 
+        firstPackage = True
         for package, scan in self.packages.items():
             # print("package: {0}".format(package))
             # print("  isRoot: {0}".format(scan.isRoot))
@@ -210,7 +222,8 @@ class VsCodeGenerator(CommonIDEGenerator):
             workspacePath = winPwd.joinpath(PureWindowsPath(scan.workspacePath)).as_posix()
             # print("  workspacePath: {0}".format(workspacePath))
             ws.addPackage(package, workspacePath)
-            if scan.isRoot:
+            if firstPackage:
+                firstPackage = False
                 ws.addBuildTarget(package)
 
         ws.generate(winDestination)
