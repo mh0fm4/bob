@@ -11,6 +11,52 @@ import os
 import sys
 import json
 
+class VsCodeWorkspace:
+    def __init__(self):
+        self.packages = []
+
+    def addPackage(self, name, path):
+        self.packages.append((name, path))
+
+    def makeWorkspaceConfig(self):
+        workspaceConfig = {}
+        workspaceConfig["folders"] = []
+        workspaceConfig["settings"] = {}
+        workspaceConfig["settings"]["C_Cpp.default.includePath"] = []
+
+        for (name, path) in self.packages:
+            workspaceConfig["folders"].append({"name": name, "path": path})
+            workspaceConfig["settings"]["C_Cpp.default.includePath"].append(
+                "${{workspaceFolder:{0}}}/**".format(name)
+            )
+
+        return workspaceConfig
+
+    def writeWorkspace(self, destinationDir):
+        workspace = {}
+        workspaceFile = destinationDir.joinpath("project.code-workspace")
+
+        # read existing workspace
+        try:
+            with open(workspaceFile.as_poisx(), "r") as file:
+                workspace = json.load(file)
+        except:
+            pass
+
+        # make new workspace
+        newWorkspace = self.makeWorkspaceConfig()
+        workspace.update(newWorkspace)
+        # print("workspace: {0}".format(json.dumps(workspace, indent = 4)))
+
+        # write new workspace
+        with open(workspaceFile.as_posix(), "w") as file:
+            json.dump(workspace, file, indent = 4)
+
+        return True
+
+    def generate(self, destinationDir):
+        self.writeWorkspace(destinationDir)
+
 class VsCodeGenerator(CommonIDEGenerator):
     def __init__(self):
         super().__init__("vscode", "Generate VS Code Workspace")
@@ -32,8 +78,7 @@ class VsCodeGenerator(CommonIDEGenerator):
 
         # print("winDestination: {0}".format(winDestination))
 
-        codeWorkspace = {}
-        codeWorkspace["folders"] = []
+        ws = VsCodeWorkspace()
 
         for package, scan in self.packages.items():
             # print("package: {0}".format(package))
@@ -41,29 +86,9 @@ class VsCodeGenerator(CommonIDEGenerator):
             # print("  packagePath: {0}".format(scan.stack))
             workspacePath = winPwd.joinpath(PureWindowsPath(scan.workspacePath)).as_posix()
             # print("  workspacePath: {0}".format(workspacePath))
-            codeWorkspace["folders"].append({"name": package, "path": workspacePath})
+            ws.addPackage(package, workspacePath)
 
-        # print("codeWorkspace: {0}".format(json.dumps(codeWorkspace, indent = 4)))
-
-        self.writeWorkspace(winDestination, codeWorkspace)
-
-    def writeWorkspace(self, destDir, workspace):
-        newWorkspace = {}
-        codeWorkspaceFile = destDir.joinpath("project.code-workspace")
-
-        # read existing workspace
-        try:
-            with open(codeWorkspaceFile.as_poisx(), "r") as file:
-                newWorkspace = json.load(file)
-        except:
-            pass
-
-        # merge existing with new workspace
-        newWorkspace.update(workspace)
-
-        # write new workspace
-        with open(codeWorkspaceFile.as_posix(), "w") as outfile:
-            json.dump(newWorkspace, outfile, indent = 4)
+        ws.generate(winDestination)
 
 def vsCodeProjectGenerator(package, argv, extra, bobRoot):
     generator = VsCodeGenerator()
