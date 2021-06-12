@@ -1,5 +1,6 @@
 from .EclipseCdtGenerator import eclipseCdtGenerator
 from .QtCreatorGenerator import qtProjectGenerator
+from .VsCode import vsCodeProjectGenerator
 import sys
 
 __all__ = ['generators']
@@ -7,6 +8,7 @@ __all__ = ['generators']
 generators = {
     'eclipseCdt' : eclipseCdtGenerator,
     'qt-creator' : qtProjectGenerator,
+    'vscode'     : vsCodeProjectGenerator,
 }
 
 if sys.platform == 'win32' or sys.platform == 'msys':
