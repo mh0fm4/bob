@@ -17,6 +17,8 @@ class VsCodeWorkspace:
         self.folders = []
         self.packages = []
         self.buildTargets = []
+        self.preIncludePaths = []
+        self.postIncludePaths = []
 
     def setRecipesDir(self, recipesDir):
         self.recipesDir = recipesDir
@@ -30,23 +32,28 @@ class VsCodeWorkspace:
     def addBuildTarget(self, target):
         self.buildTargets.append(target)
 
+    def addPreIncludePaths(self, paths):
+        self.preIncludePaths.extend(paths)
+
+    def addPostIncludePaths(self, paths):
+        self.postIncludePaths.extend(paths)
+
     def makeWorkspaceConfig(self):
         workspaceConfig = {}
 
         workspaceConfig["folders"] = []
-        if self.recipesDir is not None:
-            workspaceConfig["folders"].append({"name": "recipes", "path": self.recipesDir.as_posix()})
-
-        for (name, path) in self.packages + self.folders:
+        for (name, path) in self.folders + self.packages:
             workspaceConfig["folders"].append({"name": name, "path": path})
 
         workspaceConfig["settings"] = {}
-        workspaceConfig["settings"]["C_Cpp.default.includePath"] = []
+        includePaths = []
+        for p in self.preIncludePaths:
+            includePaths.append(p)
         for (name, path) in self.packages:
-            workspaceConfig["settings"]["C_Cpp.default.includePath"].append(
-                "${{workspaceFolder:{0}}}/**".format(name)
-            )
-
+            includePaths.append("${{workspaceFolder:{0}}}/**".format(name))
+        for p in self.postIncludePaths:
+            includePaths.append(p)
+        workspaceConfig["settings"]["C_Cpp.default.includePath"] = includePaths
 
         return workspaceConfig
 
@@ -164,8 +171,8 @@ class VsCodeWorkspace:
 class VsCodeGenerator(CommonIDEGenerator):
     def __init__(self):
         super().__init__("vscode", "Generate VS Code Workspace")
-        # self.parser.add_argument("--update-workspace", default = False, action = "store_true",
-        #                 help = "Update workspace file (.code-workspace)")
+        self.parser.add_argument("--recipes", default = False, action = "store_true",
+                        help = "Add recipes directory as workspace folder.")
 
     def configure(self, package, argv):
         super().configure(package, argv)
@@ -181,12 +188,20 @@ class VsCodeGenerator(CommonIDEGenerator):
         else:
             winPwd = bobPwd
             winDestination = Path(self.destination).resolve()
-
+        # print("winPwd: {0}".format(winPwd))
         # print("winDestination: {0}".format(winDestination))
 
+        # create workspace
         ws = VsCodeWorkspace()
 
         ws.setRecipesDir(winPwd)
+        if self.args.recipes:
+            ws.addFolder("recipes", winPwd.as_posix())
+
+        # print(self.prependIncludeDirectories)
+        ws.addPreIncludePaths(self.prependIncludeDirectories)
+        # print(self.appendIncludeDirectories)
+        ws.addPostIncludePaths(self.appendIncludeDirectories)
 
         for package, scan in self.packages.items():
             # print("package: {0}".format(package))

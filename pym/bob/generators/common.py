@@ -159,9 +159,9 @@ class CommonIDEGenerator:
             help="Update project files")
 
         parser.add_argument('--exclude', default=[], action='append', dest="excludes",
-                help="Package filter. A regex for excluding packages in QTCreator.")
+                help="Package filter. A regex for excluding packages.")
         parser.add_argument('--include', default=[], action='append', dest="include",
-                help="Include package filter. A regex for including only the specified packages in QTCreator.")
+                help="Include package filter. A regex for including only the specified packages.")
 
         parser.add_argument('-I', dest="additional_includes", default=[], action='append',
             help="Additional include directories. (added recursive starting from this directory).")
